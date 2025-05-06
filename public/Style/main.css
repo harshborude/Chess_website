@@ -1,0 +1,40 @@
+   
+     body, input, button {
+            font-family: 'Roboto', sans-serif;
+        }
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.5s ease-out;
+        }
+        .chat-container {
+            display: flex;
+            flex-direction: column-reverse;
+            height: calc(100% - 100px); /* Adjust based on header height */
+            overflow-y: auto;
+        }
+        .messages-box {
+            display: flex;
+            flex-direction: column-reverse;
+            overflow-y: auto;
+            height: 100%;
+            padding: 10px;
+        }
+        .message {
+            max-width: 45%;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 8px;
+        }      
+        .opposition-message {
+            background-color: #2563eb;
+            color: white;
+            align-self: flex-start;
+        }
+        .my-message  {
+            background-color: #4b5563;
+            color: white;
+            align-self: flex-end;
+        }

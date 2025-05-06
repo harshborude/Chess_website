@@ -1,0 +1,131 @@
+#chessBoard {
+    width: 320px;
+    height: 320px;
+    background-color: brown;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.square {
+    height: 40px;
+    width: 40px;
+    position: relative;/* Allows absolute positioning of child elements */
+}
+
+.square.highlight {
+    outline: 3px solid yellow; /* Adjust color for visibility */
+}
+
+
+.beige {
+    background-color: rgb(215, 118, 97);
+}
+
+.brown {
+    background-color: rgb(124, 30, 30);
+}
+
+.piece {
+    margin-top: -4px;
+    padding: 11.5px;
+    /* margin-bottom: 2px; */
+}
+
+.white {
+    fill: aliceblue;
+}
+
+.black {
+    text-decoration-color: black;
+}
+
+.red-mark {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: rgb(84, 26, 160);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none; /* Allow clicking through the marker */
+}
+
+.char {
+    cursor: grab;
+}
+
+.char:active {
+    cursor: grabbing;
+}
+
+
+
+/* Pop-up styles */
+#popup {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    width: 300px; /* Fixed width for better control */
+}
+
+#popup p {
+    margin: 0 0 20px 0;
+    font-size: 16px;
+    line-height: 1.5;
+    text-align: center;
+    color: #333;
+}
+
+#popup button {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    background-color: #4CAF50;
+    border: none;
+    border-radius: 4px;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#popup button:hover {
+    background-color: #45a049;
+}
+
+#overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 999;
+}
+
+/* Chat area animation states */
+#chatArea.hidden {
+    transform: translateX(100%);
+}
+
+#chatArea.visible {
+    transform: translateX(0);
+}
+
+.flipped {
+    transform: rotate(180deg) ;
+}
+
+.charflipped{
+    transform: rotate(180deg) ;
+}
