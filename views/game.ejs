@@ -3,66 +3,335 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="/Style/game.css">
-    <title>Document</title>
+    <title>Chess Game with Video Call - TEST</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+
+        .main-container {
+            display: flex;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .chess-section {
+            flex: 1;
+        }
+
+        .video-section {
+            width: 300px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        /* Chess Board Styles */
+        #chessBoard {
+            display: grid;
+            grid-template-columns: repeat(8, 60px);
+            grid-template-rows: repeat(8, 60px);
+            gap: 0;
+            border: 3px solid #333;
+            margin: 20px 0;
+        }
+
+        .square {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .beige { background-color: #f0d9b5; }
+        .brown { background-color: #b58863; }
+
+        .piece {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .char {
+            width: 40px;
+            height: 40px;
+            cursor: grab;
+        }
+
+        .char:active { cursor: grabbing; }
+
+        .char svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .white svg path {
+            fill: #ffffff;
+            stroke: #000000;
+            stroke-width: 1;
+        }
+
+        .black svg path {
+            fill: #000000;
+            stroke: #ffffff;
+            stroke-width: 1;
+        }
+
+        .flipped { transform: rotate(180deg); }
+
+        /* Video Styles */
+        .video-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .video-wrapper {
+            position: relative;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .video-wrapper video {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+        }
+
+        .video-label {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .connection-status {
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .status-connected { background: #d4edda; color: #155724; }
+        .status-connecting { background: #fff3cd; color: #856404; }
+        .status-disconnected { background: #f8d7da; color: #721c24; }
+
+        /* Debug Panel */
+        .debug-panel {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .debug-panel h4 {
+            margin: 0 0 10px 0;
+            color: #495057;
+        }
+
+        .debug-log {
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 12px;
+            height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        /* Game Info */
+        .game-info {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .role-indicator {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 15px;
+            color: white;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .role-white { background: #6c757d; }
+        .role-black { background: #343a40; }
+
+        /* Buttons */
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        .btn:hover { background: #0056b3; }
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #c82333; }
+    </style>
 </head>
-<body class="bg-gradient-to-br flex items-center from-gray-800 via-gray-900 to-black text-white flex justify-center items-start min-h-screen">
-    <div id="overlay"></div>
-    <div id="popup">
-        <p id="popup-message"></p>
-        <button onclick="closePopup()">OK</button>
+<body>
+    <div class="main-container">
+        <!-- Chess Game Section -->
+        <div class="chess-section">
+            <div class="game-info">
+                <h2>Chess Game with Video Chat</h2>
+                <div>
+                    <strong>Player Role:</strong> 
+                    <span id="playerRoleDisplay">Waiting...</span>
+                </div>
+                <div>
+                    <strong>Room:</strong> 
+                    <span id="roomDisplay">Not connected</span>
+                </div>
+                <div>
+                    <strong>Game Status:</strong> 
+                    <span id="gameStatus">Waiting for opponent...</span>
+                </div>
+            </div>
+
+            <div id="chessBoard"></div>
+        </div>
+
+        <!-- Video Chat Section -->
+        <div class="video-section">
+            <div class="connection-status" id="connectionStatus">
+                🔄 Initializing video chat...
+            </div>
+
+            <div class="video-container">
+                <div class="video-wrapper">
+                    <video id="localVideo" autoplay muted playsinline></video>
+                    <div class="video-label">Your Video</div>
+                </div>
+
+                <div class="video-wrapper">
+                    <video id="remoteVideo" autoplay playsinline></video>
+                    <div class="video-label">Opponent's Video</div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="btn" onclick="toggleVideo()">📹 Toggle Video</button>
+                <button class="btn" onclick="toggleAudio()">🎤 Toggle Audio</button>
+            </div>
+
+            <!-- Debug Panel -->
+            <div class="debug-panel">
+                <h4>Debug Console</h4>
+                <div class="debug-log" id="debugLog"></div>
+                <button class="btn btn-danger" onclick="clearDebugLog()">Clear Log</button>
+            </div>
+        </div>
     </div>
 
+    <!-- Include required scripts -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
     
-    <div class="w-full h-[500px] flex items-center justify-center bg-gray-900 max-w-5xl p-8 shadow-2xl rounded-2xl animate-fade-in relative overflow-hidden">
-        <!-- Chat Toggle Button -->
-        <button id="chatToggleButton" 
-            class="absolute top-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg hover:bg-blue-700 transition-all duration-300">
-            Chat
-        </button>
+    <!-- Debug logging system -->
+    <script>
+        // Enhanced console logging for debugging
+        const debugLog = document.getElementById('debugLog');
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        
+        function addToDebugLog(message, type = 'log') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff6b6b' : type === 'warn' ? '#ffd93d' : '#0f0';
+            debugLog.innerHTML += `<span style="color: ${color}">[${timestamp}] ${message}</span>\n`;
+            debugLog.scrollTop = debugLog.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            addToDebugLog(args.join(' '), 'log');
+        };
+        
+        console.error = function(...args) {
+            originalConsoleError.apply(console, args);
+            addToDebugLog(args.join(' '), 'error');
+        };
+        
+        function clearDebugLog() {
+            debugLog.innerHTML = '';
+        }
+        
+        // Video control functions
+        function toggleVideo() {
+            if (window.localStream) {
+                const videoTrack = window.localStream.getVideoTracks()[0];
+                if (videoTrack) {
+                    videoTrack.enabled = !videoTrack.enabled;
+                    console.log('📹 Video toggled:', videoTrack.enabled ? 'ON' : 'OFF');
+                }
+            }
+        }
+        
+        function toggleAudio() {
+            if (window.localStream) {
+                const audioTrack = window.localStream.getAudioTracks()[0];
+                if (audioTrack) {
+                    audioTrack.enabled = !audioTrack.enabled;
+                    console.log('🎤 Audio toggled:', audioTrack.enabled ? 'ON' : 'OFF');
+                }
+            }
+        }
+        
+        // Update UI elements
+        function updateConnectionStatus(status, message) {
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.className = `connection-status status-${status}`;
+            statusEl.textContent = message;
+        }
+        
+        function updateGameInfo(role, room) {
+            document.getElementById('playerRoleDisplay').innerHTML = 
+                `${role === 'w' ? 'White' : 'Black'} <span class="role-indicator role-${role === 'w' ? 'white' : 'black'}">${role.toUpperCase()}</span>`;
+            document.getElementById('roomDisplay').textContent = room;
+            document.getElementById('gameStatus').textContent = 'Game in progress';
+        }
+        
+        console.log('🚀 Debug system initialized');
+    </script>
     
-        <!-- Chessboard -->
-        <div id="chessBoard" class="">
-            <h3 class="mt-[100px] ml-[70px]">Wait for another player</h3>
-        </div>
-    
-        <!-- Chat Area -->
-        <div id="chatArea" class="absolute top-0 right-[-100%] h-full w-1/3 bg-gray-800 bg-opacity-70 text-inherit shadow-md rounded-md p-4 transform transition-transform duration-500 ease-in-out">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-blue-400">Chat</h3>
-                <button id="closeChatButton" 
-                    class="bg-red-600 text-white px-2 py-1 rounded-md shadow-md hover:bg-red-700 transition-all duration-300">
-                    ×
-                </button>
-            </div>
-            
-            <div class="chat-container" id="chat-display" style="height: calc(100% - 150px); overflow-y: auto;">
-                <!-- Chat messages will be dynamically added here -->
-            </div>
-    
-            <!-- Message Input -->
-            <form id="message-form" class="input-area">
-                <div class="relative">
-                    <textarea id="message" 
-                        class="w-full p-4 bg-gray-800 text-white border border-blue-600 rounded-lg placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all ease-in-out duration-200 resize-none" 
-                        placeholder="Type your message here..." rows="3" required></textarea>
-                    <button type="submit" 
-                        class="absolute right-2 mb-1 bottom-2 bg-blue-600 text-white font-semibold rounded-full px-4 py-2 shadow-lg hover:bg-blue-700 active:bg-blue-800 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-opacity-50">
-                        Send
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
+    <!-- Your game and video scripts -->
+    <script src="/javaScript/video.js"></script>
+    <script src="/javaScript/game.js"></script>
     
     
-    
-    
+    <script>
+        // Make streams globally accessible for debugging
+        window.addEventListener('load', () => {
+            console.log('📱 Page fully loaded, WebRTC should initialize now');
+            updateConnectionStatus('connecting', '🔄 Connecting to game server...');
+        });
+    </script>
 </body>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js" 
-    integrity="sha512-xRllwz2gdZciIB+AkEbeq+gVhX8VB8XsfqeFbUh+SzHlN96dEduwtTuVuc2u9EROlmW9+yhRlxjif66ORpsgVA==" 
-    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="/socket.io/socket.io.js"></script>
-<script src="/javaScript/game.js"></script>
 </html>

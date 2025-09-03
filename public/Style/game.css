@@ -129,3 +129,22 @@
 .charflipped{
     transform: rotate(180deg) ;
 }
+
+
+/* in /Style/game.css */
+#localVideo, #remoteVideo {
+  width: 200px;
+  height: 150px;
+  background: black;
+  border: 2px solid #444;
+  margin: 8px;
+  object-fit: cover;
+}
+.video-container {
+  display: flex;
+  gap: 12px;
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 10;
+}

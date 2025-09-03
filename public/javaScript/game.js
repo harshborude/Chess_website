@@ -1,21 +1,21 @@
-const socket = io() ;
+// const socket = io() ;
 const chess = new Chess() ;
 
 // var chessBoard = chess.board() ;
 var gameBoard = document.getElementById('chessBoard');
 
 var playerRole = null ;
-var currentRoom = null ;
+// var currentRoom = null ;
 let draggedPiece = null ;
 let sourceSquare = null ;
 
-if(!playerRole){
-    socket.emit("playerRole request") ;
+if (!playerRole) {
+    socket.emit("playerRole request");
 
-    socket.on("playerRole response" , ({ role, room }) => {
-        playerRole = role ;
-        currentRoom = room ;
-        createBroard(chess.board()) ;
+    socket.on("playerRole response", ({ role, room }) => {
+        playerRole = role;
+        currentRoom = room;
+        createBroard(chess.board());
         console.log(`You are playing as ${playerRole} in room ${currentRoom}`);
 
         if (playerRole === "observer") {
@@ -23,6 +23,10 @@ if(!playerRole){
         } else {
             console.log(`You are playing as ${playerRole}`);
         }
+
+        // 🔥 IMPORTANT: Make sure video.js can access these variables
+        window.playerRole = playerRole;
+        window.currentRoom = currentRoom;
     })
 }
 
@@ -238,56 +242,56 @@ document.addEventListener('keydown', (e) => {
 
 
 
-document.addEventListener("DOMContentLoaded", () => {
-    // Select necessary DOM elements
-    const chatToggleButton = document.getElementById("chatToggleButton");
-    const closeChatButton = document.getElementById("closeChatButton");
-    const chatArea = document.getElementById("chatArea");
-    const messageForm = document.getElementById("message-form");
-    const chatDisplay = document.getElementById("chat-display");
+// document.addEventListener("DOMContentLoaded", () => {
+//     // Select necessary DOM elements
+//     const chatToggleButton = document.getElementById("chatToggleButton");
+//     const closeChatButton = document.getElementById("closeChatButton");
+//     const chatArea = document.getElementById("chatArea");
+//     const messageForm = document.getElementById("message-form");
+//     const chatDisplay = document.getElementById("chat-display");
 
-    // Function to toggle chat visibility with a slide effect
-    chatToggleButton.addEventListener("click", () => {
-        // If chat is visible, slide it out; if hidden, slide it in
-        chatArea.style.right = chatArea.style.right === "0px" ? "-100%" : "0px";
-    });
+//     // Function to toggle chat visibility with a slide effect
+//     chatToggleButton.addEventListener("click", () => {
+//         // If chat is visible, slide it out; if hidden, slide it in
+//         chatArea.style.right = chatArea.style.right === "0px" ? "-100%" : "0px";
+//     });
 
-    // Function to hide the chat area when the close button is clicked
-    closeChatButton.addEventListener("click", () => {
-        chatArea.style.right = "-100%"; // Slide the chat area out of view
-    });
+//     // Function to hide the chat area when the close button is clicked
+//     closeChatButton.addEventListener("click", () => {
+//         chatArea.style.right = "-100%"; // Slide the chat area out of view
+//     });
 
-    // Handle form submission for sending messages
-    messageForm.addEventListener("submit", (event) => {
-        event.preventDefault(); // Prevent the default form submission behavior
-        const messageInput = document.getElementById("message");
-        const message = messageInput.value.trim();
+//     // Handle form submission for sending messages
+//     messageForm.addEventListener("submit", (event) => {
+//         event.preventDefault(); // Prevent the default form submission behavior
+//         const messageInput = document.getElementById("message");
+//         const message = messageInput.value.trim();
 
-        if (message) {
-            // Create a new message element
-            const messageElement = document.createElement("div");
-            messageElement.textContent = message;
-            messageElement.className = "p-2 mb-2 bg-blue-700 text-white rounded-lg self-end"; // CSS classes for styling the message
-            chatDisplay.appendChild(messageElement); // Add the message to the chat display
-            socket.emit('chatMessage' , { room: currentRoom,  message } ) ;
-            messageInput.value = ""; // Clear the input field
+//         if (message) {
+//             // Create a new message element
+//             const messageElement = document.createElement("div");
+//             messageElement.textContent = message;
+//             messageElement.className = "p-2 mb-2 bg-blue-700 text-white rounded-lg self-end"; // CSS classes for styling the message
+//             chatDisplay.appendChild(messageElement); // Add the message to the chat display
+//             socket.emit('chatMessage' , { room: currentRoom,  message } ) ;
+//             messageInput.value = ""; // Clear the input field
 
-            // Ensure the latest message is visible by scrolling to the bottom of the chat container
-            chatDisplay.scrollTop = chatDisplay.scrollHeight;
-        }
-    });
+//             // Ensure the latest message is visible by scrolling to the bottom of the chat container
+//             chatDisplay.scrollTop = chatDisplay.scrollHeight;
+//         }
+//     });
 
-    // Note: Additional functionality like receiving messages or managing a chess game would need to be implemented here.
-});
+//     // Note: Additional functionality like receiving messages or managing a chess game would need to be implemented here.
+// });
 
-socket.on('chatMessage' , (message) => {
-    const chatDisplay = document.getElementById("chat-display");
+// socket.on('chatMessage' , (message) => {
+//     const chatDisplay = document.getElementById("chat-display");
 
-    const messageElement = document.createElement("div");
-    messageElement.textContent = message;
-    messageElement.className = "p-2 mb-2 bg-blue-200 text-white rounded-lg self-end"; 
-    chatDisplay.appendChild(messageElement) ;
+//     const messageElement = document.createElement("div");
+//     messageElement.textContent = message;
+//     messageElement.className = "p-2 mb-2 bg-blue-200 text-white rounded-lg self-end"; 
+//     chatDisplay.appendChild(messageElement) ;
 
-    chatDisplay.scrollTop = chatDisplay.scrollHeight;
+//     chatDisplay.scrollTop = chatDisplay.scrollHeight;
 
-})
+// })
