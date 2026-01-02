@@ -1,10 +1,13 @@
-// Fixed socketHandle.js with proper WebRTC signaling
+// sockets/socketHandlers.js
+
+// Fixed socketHandler.js with proper WebRTC signaling AND Reconnection Logic
 let waitingPlayer = null;
 
 module.exports = (io) => {
     io.on('connection', socket => {
         console.log('🔗 New user connected:', socket.id);
 
+        // --- MATCHMAKING LOGIC ---
         socket.on('playerRole request', () => {
             if (waitingPlayer) {
                 const roomName = `room-${waitingPlayer.id}-${socket.id}`;
@@ -28,41 +31,74 @@ module.exports = (io) => {
             }
         });
 
+        // --- NEW: RECONNECTION LOGIC ---
+        socket.on('rejoin request', ({ room, role }) => {
+            console.log(`Player ${socket.id} rejoining room: ${room}`);
+            
+            // 1. Join the socket to the old room
+            socket.join(room);
+            
+            // 2. Tell the client they are good to go
+            socket.emit("playerRole response", { role: role, room: room });
+            
+            // 3. Request board state from the other player in the room
+            // (Since the server is stateless, we need the peer to tell us the board)
+            socket.to(room).emit("request board state");
+            
+            // Optional: Notify opponent
+            socket.to(room).emit("chat message", "Opponent has reconnected.");
+        });
+
+        // --- NEW: SYNC BOARD STATE ---
+        socket.on("sync board state", ({ room, fen }) => {
+            // Relay the board state (FEN) to the rejoining player
+            socket.to(room).emit("update board", fen);
+        });
+
+
+        // --- GAMEPLAY LOGIC ---
         socket.on('make move', ({ room, move }) => {
             console.log(`♟️ Move in ${room}:`, move);
             socket.to(room).emit('opponentMove', move);
         });
 
+        socket.on('chat message', (msg) => {
+             // Note: In your original main.js you emitted 'chat message' with just the string
+             // But in socketHandlers you were listening for 'chatMessage' object.
+             // I've standardized it here to match your original main.js emit 
+             // Ideally you should pass the room ID in the chat emit too.
+             
+             // Assuming your main.js sends just the message string, we broadcast to everyone (global)
+             // OR simpler: just broadcast to all other clients if you don't have room in msg
+             socket.broadcast.emit('response message', msg);
+             
+             // IF you update main.js to send { room, msg }, use:
+             // socket.to(room).emit('response message', msg);
+        });
+        
+        // Listener for the object version if you implemented that update
         socket.on('chatMessage', ({ room, message }) => {
             console.log(`💬 Chat in ${room}:`, message);
             socket.to(room).emit('chatMessage', message);
         });
 
-        // 🎯 CRITICAL FIX: Proper WebRTC signaling with detailed logging
+        // --- WEBRTC SIGNALING ---
         socket.on('video-offer', ({ room, offer }) => {
             console.log(`📤 Relaying video offer in room: ${room}`);
-            console.log(`📊 Offer type: ${offer?.type}, SDP length: ${offer?.sdp?.length || 0}`);
-            
-            // Relay to all other clients in the room
             socket.to(room).emit('video-offer', { room, offer });
         });
 
         socket.on('video-answer', ({ room, answer }) => {
             console.log(`📤 Relaying video answer in room: ${room}`);
-            console.log(`📊 Answer type: ${answer?.type}, SDP length: ${answer?.sdp?.length || 0}`);
-            
-            // Relay to all other clients in the room
             socket.to(room).emit('video-answer', { room, answer });
         });
 
         socket.on('ice-candidate', ({ room, candidate }) => {
             console.log(`📤 Relaying ICE candidate in room: ${room}`);
-            console.log(`📊 Candidate: ${candidate?.candidate?.substring(0, 50)}...`);
-            
-            // Relay to all other clients in the room
             socket.to(room).emit('ice-candidate', { room, candidate });
         });
 
+        // --- DISCONNECT LOGIC ---
         socket.on('disconnect', () => {
             console.log('❌ Player disconnected:', socket.id);
             

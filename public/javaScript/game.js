@@ -1,122 +1,147 @@
-// const socket = io() ;
-const chess = new Chess() ;
 
-// var chessBoard = chess.board() ;
+
+const chess = new Chess();
 var gameBoard = document.getElementById('chessBoard');
 
-var playerRole = null ;
-// var currentRoom = null ;
-let draggedPiece = null ;
-let sourceSquare = null ;
+var playerRole = null;
+var currentRoom = null;
+let draggedPiece = null;
+let sourceSquare = null;
 
-if (!playerRole) {
-    socket.emit("playerRole request");
 
-    socket.on("playerRole response", ({ role, room }) => {
-        playerRole = role;
-        currentRoom = room;
-        createBroard(chess.board());
-        console.log(`You are playing as ${playerRole} in room ${currentRoom}`);
+// 1. Check for saved game on load
+const savedRoom = localStorage.getItem('currentRoom');
+const savedRole = localStorage.getItem('playerRole');
 
-        if (playerRole === "observer") {
-            console.log("You are an observer. Waiting for a game...");
-        } else {
-            console.log(`You are playing as ${playerRole}`);
-        }
-
-        // 🔥 IMPORTANT: Make sure video.js can access these variables
-        window.playerRole = playerRole;
-        window.currentRoom = currentRoom;
-    })
+if (savedRoom && savedRole) {
+    console.log("Found saved game, rejoining...", savedRoom);
+    // Attempt to rejoin existing game
+    socket.emit("rejoin request", { room: savedRoom, role: savedRole });
+} else {
+    // No saved game, start normally
+    if (!playerRole) {
+        socket.emit("playerRole request");
+    }
 }
 
+// 2. Handle Role Response (Start Game or Rejoin)
+socket.on("playerRole response", ({ role, room }) => {
+    playerRole = role;
+    currentRoom = room;
+
+    // SAVE TO LOCAL STORAGE
+    localStorage.setItem('playerRole', role);
+    localStorage.setItem('currentRoom', room);
+
+    createBroard(chess.board());
+    console.log(`You are playing as ${playerRole} in room ${currentRoom}`);
+
+    if (playerRole === "observer") {
+        console.log("You are an observer. Waiting for a game...");
+    } else {
+        console.log(`You are playing as ${playerRole}`);
+    }
+
+    // video.js can access these variables
+    window.playerRole = playerRole;
+    window.currentRoom = currentRoom;
+});
+
+// 3. Handle Board Sync (For Rejoining Player)
+socket.on("request board state", () => {
+    // If I am already in the game and someone reconnects, send them my board state
+    if (chess.fen()) {
+        socket.emit("sync board state", { 
+            room: currentRoom, 
+            fen: chess.fen() 
+        });
+    }
+});
+
+socket.on("update board", (fen) => {
+    // Load the received board state
+    console.log("Syncing board state from opponent...");
+    chess.load(fen);
+    createBroard(chess.board());
+});
+
+
 function createBroard(chessBoard) {
-    gameBoard.innerHTML = "" ;
+    gameBoard.innerHTML = "";
 
-    chessBoard.forEach( (row , i) => {
-        row.forEach( (piece , j ) => {
-            const square = document.createElement('div') ;
-            square.classList.add('square') ;
-            // square.classList.add(`row-${i}` , `col-${j}`);
-            square.dataset.row = i ;
-            square.dataset.col = j ;
-            // square.dataset.number = i*8 + j ;
-            square.classList.add((i+j)%2 ? 'beige' : 'brown') ; 
+    chessBoard.forEach((row, i) => {
+        row.forEach((piece, j) => {
+            const square = document.createElement('div');
+            square.classList.add('square');
+            square.dataset.row = i;
+            square.dataset.col = j;
+            square.classList.add((i + j) % 2 ? 'beige' : 'brown');
 
-            gameBoard.append(square) ;
+            gameBoard.append(square);
 
-            if(piece) {
-                const pieceElement = document.createElement('div') ;
+            if (piece) {
+                const pieceElement = document.createElement('div');
                 pieceElement.classList.add(
-                    "piece" ,
-                    piece.color == 'w' ? "white" : "black") ;
-                
+                    "piece",
+                    piece.color == 'w' ? "white" : "black");
+
                 const charElement = document.createElement('span');
-                
+
                 charElement.classList.add("char");
-                // if(piece.color == 'b'){
-                //     charElement.classList.add('rotate-180');
-                // }
                 charElement.innerHTML = char[piece.type];
 
-                charElement.draggable = playerRole === piece.color ;
+                charElement.draggable = playerRole === piece.color;
 
-                if(charElement.draggable){
-                    // console.log('dragg yess' );
-                    charElement.addEventListener("dragstart" , (e) => {
-                        if (charElement.draggable){
-                            draggedPiece = charElement ;
-                            sourceSquare = {row : i , col : j} ;
-                            e.dataTransfer.setData("text/plain","") ;
+                if (charElement.draggable) {
+                    charElement.addEventListener("dragstart", (e) => {
+                        if (charElement.draggable) {
+                            draggedPiece = charElement;
+                            sourceSquare = { row: i, col: j };
+                            e.dataTransfer.setData("text/plain", "");
                         }
                     })
 
-                    charElement.addEventListener("dragend" , (e)=>{
-                        draggedPiece = null ;
-                        sourceSquare = null ;
+                    charElement.addEventListener("dragend", (e) => {
+                        draggedPiece = null;
+                        sourceSquare = null;
                     })
                 }
-                // Append the character to the piece container
                 pieceElement.append(charElement);
-                
-                // Add the piece container to the square
                 square.append(pieceElement);
             }
 
-            square.addEventListener("dragover" , (e) => {
-                e.preventDefault() ;
+            square.addEventListener("dragover", (e) => {
+                e.preventDefault();
             })
 
-            square.addEventListener("drop" , (e)=>{
-                e.preventDefault() ;
-                if(draggedPiece){
+            square.addEventListener("drop", (e) => {
+                e.preventDefault();
+                if (draggedPiece) {
                     const targetSource = {
-                        row : Number(square.dataset.row) ,
-                        col : Number(square.dataset.col) 
+                        row: Number(square.dataset.row),
+                        col: Number(square.dataset.col)
                     }
 
-                    handleMove(sourceSquare , targetSource) ;
-                    // console.log( sourceSquare , targetSource) ;
+                    handleMove(sourceSquare, targetSource);
                 }
             })
         });
     })
 
     if (playerRole === 'b') {
-        // Rotate the chessboard
         const gameBoard = document.getElementById('chessBoard');
-        gameBoard.classList.add('flipped') ;
-        const allChildren = gameBoard.querySelectorAll('.square'); // Ensure correct selector
-    
-        allChildren.forEach(child => {
-            child.classList.add('flipped'); // Add the CSS class to flip pieces
-        });    
-    }else{
-        gameBoard.classList.remove('flipped') ;
-    }
+        gameBoard.classList.add('flipped');
+        const allChildren = gameBoard.querySelectorAll('.square');
 
+        allChildren.forEach(child => {
+            child.classList.add('flipped');
+        });
+    } else {
+        gameBoard.classList.remove('flipped');
+    }
 }
 
+// Pieces definition
 char = {
     king : '<div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M224 0c17.7 0 32 14.3 32 32l0 16 16 0c17.7 0 32 14.3 32 32s-14.3 32-32 32l-16 0 0 48 152 0c22.1 0 40 17.9 40 40c0 5.3-1 10.5-3.1 15.4L368 400 80 400 3.1 215.4C1 210.5 0 205.3 0 200c0-22.1 17.9-40 40-40l152 0 0-48-16 0c-17.7 0-32-14.3-32-32s14.3-32 32-32l16 0 0-16c0-17.7 14.3-32 32-32zM38.6 473.4L80 432l288 0 41.4 41.4c4.2 4.2 6.6 10 6.6 16c0 12.5-10.1 22.6-22.6 22.6L54.6 512C42.1 512 32 501.9 32 489.4c0-6 2.4-11.8 6.6-16z"/></svg></div>' ,
     queen : '<div><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M256 0a56 56 0 1 1 0 112A56 56 0 1 1 256 0zM134.1 143.8c3.3-13 15-23.8 30.2-23.8c12.3 0 22.6 7.2 27.7 17c12 23.2 36.2 39 64 39s52-15.8 64-39c5.1-9.8 15.4-17 27.7-17c15.3 0 27 10.8 30.2 23.8c7 27.8 32.2 48.3 62.1 48.3c10.8 0 21-2.7 29.8-7.4c8.4-4.4 18.9-4.5 27.6 .9c13 8 17.1 25 9.2 38L399.7 400 384 400l-40.4 0-175.1 0L128 400l-15.7 0L5.4 223.6c-7.9-13-3.8-30 9.2-38c8.7-5.3 19.2-5.3 27.6-.9c8.9 4.7 19 7.4 29.8 7.4c29.9 0 55.1-20.5 62.1-48.3zM256 224s0 0 0 0s0 0 0 0s0 0 0 0zM112 432l288 0 41.4 41.4c4.2 4.2 6.6 10 6.6 16c0 12.5-10.1 22.6-22.6 22.6L86.6 512C74.1 512 64 501.9 64 489.4c0-6 2.4-11.8 6.6-16L112 432z"/></svg></div>' ,
@@ -140,47 +165,43 @@ char = {
     P : '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.--><path d="M215.5 224c29.2-18.4 48.5-50.9 48.5-88c0-57.4-46.6-104-104-104S56 78.6 56 136c0 37.1 19.4 69.6 48.5 88L96 224c-17.7 0-32 14.3-32 32c0 16.5 12.5 30 28.5 31.8L80 400l160 0L227.5 287.8c16-1.8 28.5-15.3 28.5-31.8c0-17.7-14.3-32-32-32l-8.5 0zM22.6 473.4c-4.2 4.2-6.6 10-6.6 16C16 501.9 26.1 512 38.6 512l242.7 0c12.5 0 22.6-10.1 22.6-22.6c0-6-2.4-11.8-6.6-16L256 432 64 432 22.6 473.4z"/></svg></div>' ,
 
 }
-var countmove =0;
 
-const handleMove = (source , target) => {    
-    try{
-        
+var countmove = 0;
+
+const handleMove = (source, target) => {
+    try {
+
         let constMove = {
-            from : `${String.fromCharCode(97+source.col)}${8-source.row}` ,
-            to : `${String.fromCharCode(97+target.col)}${8-target.row}` ,
-            promotion : 'q' 
+            from: `${String.fromCharCode(97 + source.col)}${8 - source.row}`,
+            to: `${String.fromCharCode(97 + target.col)}${8 - target.row}`,
+            promotion: 'q'
         }
-        console.log('this work' , constMove) ;
+        console.log('this work', constMove);
 
-        if(chess.turn() == playerRole){
-            const move = chess.move(constMove) ;
+        if (chess.turn() == playerRole) {
+            const move = chess.move(constMove);
 
-            if(!move){
-                console.log("invalid move" , chess.turn() , move) ;
-                return ;
+            if (!move) {
+                console.log("invalid move", chess.turn(), move);
+                return;
             }
 
             // console.log(chess.ascii()) ;
-            console.log('my move:' , constMove) ;
-            socket.emit('make move' , {room: currentRoom , move : constMove}) ;
-            createBroard(chess.board()) ;
-            
-            
+            console.log('my move:', constMove);
+            socket.emit('make move', { room: currentRoom, move: constMove });
+            createBroard(chess.board());
         }
-    }catch(err){
-        console.log("Wrong move" , err) ;
+    } catch (err) {
+        console.log("Wrong move", err);
     }
 }
 
-socket.on("opponentMove" , (move)=>{
+socket.on("opponentMove", (move) => {
     console.log(`Opponent move received: ${move}`);
-    chess.move(move) ;
+    chess.move(move);
     createBroard(chess.board());
     checkGameState();
 })
-
-
-
 
 
 function checkGameState(playerRole, socket) {
@@ -193,7 +214,8 @@ function checkGameState(playerRole, socket) {
             message = "Checkmate! You lose!";
         }
         showPopup(message);
-        socket.disconnect();
+        onGameOver(); // Clear storage
+        // socket.disconnect(); // Optional: Disconnect on end
         return;
     }
 
@@ -207,91 +229,44 @@ function checkGameState(playerRole, socket) {
 
     if (message) {
         showPopup(message);
-
         if (chess.in_stalemate() || chess.in_draw() || chess.game_over()) {
-            socket.disconnect();
+            onGameOver(); // Clear storage
+            // socket.disconnect(); // Optional
         }
     }
 }
 
+// Clear storage when game ends
+function onGameOver() {
+    localStorage.removeItem('playerRole');
+    localStorage.removeItem('currentRoom');
+}
 
 function showPopup(message) {
     const popup = document.getElementById("popup");
     const overlay = document.getElementById("overlay");
     const popupMessage = document.getElementById("popup-message");
+    
+    // Create elements if they don't exist (since they were in your CSS but maybe not HTML)
+    if (!popupMessage && message) alert(message); 
 
-    popupMessage.textContent = message;
-    popup.style.display = "block";
-    overlay.style.display = "block";
+    if (popupMessage) {
+        popupMessage.textContent = message;
+        popup.style.display = "block";
+        overlay.style.display = "block";
+    }
 }
 
 function closePopup() {
     const popup = document.getElementById("popup");
     const overlay = document.getElementById("overlay");
-
-    popup.style.display = "none";
-    overlay.style.display = "none";
+    
+    if (popup) popup.style.display = "none";
+    if (overlay) overlay.style.display = "none";
 }
 
 document.addEventListener('keydown', (e) => {
     if (e.key === "Enter") {
         // Simulating a game state check
-        
     }
 });
-
-
-
-// document.addEventListener("DOMContentLoaded", () => {
-//     // Select necessary DOM elements
-//     const chatToggleButton = document.getElementById("chatToggleButton");
-//     const closeChatButton = document.getElementById("closeChatButton");
-//     const chatArea = document.getElementById("chatArea");
-//     const messageForm = document.getElementById("message-form");
-//     const chatDisplay = document.getElementById("chat-display");
-
-//     // Function to toggle chat visibility with a slide effect
-//     chatToggleButton.addEventListener("click", () => {
-//         // If chat is visible, slide it out; if hidden, slide it in
-//         chatArea.style.right = chatArea.style.right === "0px" ? "-100%" : "0px";
-//     });
-
-//     // Function to hide the chat area when the close button is clicked
-//     closeChatButton.addEventListener("click", () => {
-//         chatArea.style.right = "-100%"; // Slide the chat area out of view
-//     });
-
-//     // Handle form submission for sending messages
-//     messageForm.addEventListener("submit", (event) => {
-//         event.preventDefault(); // Prevent the default form submission behavior
-//         const messageInput = document.getElementById("message");
-//         const message = messageInput.value.trim();
-
-//         if (message) {
-//             // Create a new message element
-//             const messageElement = document.createElement("div");
-//             messageElement.textContent = message;
-//             messageElement.className = "p-2 mb-2 bg-blue-700 text-white rounded-lg self-end"; // CSS classes for styling the message
-//             chatDisplay.appendChild(messageElement); // Add the message to the chat display
-//             socket.emit('chatMessage' , { room: currentRoom,  message } ) ;
-//             messageInput.value = ""; // Clear the input field
-
-//             // Ensure the latest message is visible by scrolling to the bottom of the chat container
-//             chatDisplay.scrollTop = chatDisplay.scrollHeight;
-//         }
-//     });
-
-//     // Note: Additional functionality like receiving messages or managing a chess game would need to be implemented here.
-// });
-
-// socket.on('chatMessage' , (message) => {
-//     const chatDisplay = document.getElementById("chat-display");
-
-//     const messageElement = document.createElement("div");
-//     messageElement.textContent = message;
-//     messageElement.className = "p-2 mb-2 bg-blue-200 text-white rounded-lg self-end"; 
-//     chatDisplay.appendChild(messageElement) ;
-
-//     chatDisplay.scrollTop = chatDisplay.scrollHeight;
-
-// })
